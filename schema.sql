@@ -14,7 +14,7 @@ CREATE TABLE markets (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	market_name TEXT NOT NULL,
-	market_account INTEGER,
-	FOREIGN KEY (market_account) REFERENCES accounts(id)
+	account_id INTEGER,
+	FOREIGN KEY (account_id) REFERENCES accounts(id)
 );
 	
