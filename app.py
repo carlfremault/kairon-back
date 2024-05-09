@@ -27,21 +27,26 @@ def get_db_connection():
     return conn
 
 
+# EXCHANGES
+
+
 @app.route("/api/exchanges")
 def get_exchanges():
-    proposed_exchanges = ["binance", "kucoin"]
-    return jsonify(proposed_exchanges)
+    return jsonify(ccxt.exchanges)
 
 
-def get_exchange(exchange_name, public_key, private_key):
-    exchange_class = getattr(ccxt, exchange_name)
-    exchange = exchange_class(
-        {
-            "apiKey": public_key,
-            "secret": private_key,
-        }
+def verify_exchange_credendtials(exchange_name, public_key, private_key):
+    exchange = getattr(ccxt, exchange_name)(
+        {"apiKey": public_key, "secret": private_key}
     )
-    return exchange
+    try:
+        account_info = exchange.fetch_balance()
+    except:
+        return False
+    return True
+
+
+# ACCOUNTS
 
 
 @app.route("/api/accounts")
@@ -53,9 +58,6 @@ def get_accounts():
     return jsonify(accounts)
 
 
-# ACCOUNTS
-
-
 @app.route("/api/accounts", methods=["POST"])
 def add_account():
     new_account = request.get_json()
@@ -64,17 +66,18 @@ def add_account():
     public_key = new_account["public_key"]
     private_key = new_account["private_key"]
 
-    # test_exchange = get_exchange(exchange_name, public_key, private_key)
-
-    db = get_db_connection()
-    db.execute(
-        "INSERT INTO accounts (account_name, exchange_name, public_key, private_key) VALUES (?, ?, ? , ?)",
-        (account_name, exchange_name, public_key, private_key),
-    )
-    db.commit()
-    db.close()
-    response = jsonify("")
-    return response, 204
+    if verify_exchange_credendtials(exchange_name, public_key, private_key) is True:
+        db = get_db_connection()
+        db.execute(
+            "INSERT INTO accounts (account_name, exchange_name, public_key, private_key) VALUES (?, ?, ? , ?)",
+            (account_name, exchange_name, public_key, private_key),
+        )
+        db.commit()
+        db.close()
+        response = jsonify("")
+        return response, 204
+    else:
+        return jsonify("Invalid credentials"), 400
 
 
 def get_account_info(id):
@@ -88,6 +91,7 @@ def get_account_info(id):
 
 
 # MARKETS
+
 
 binance_markets_cache = None
 kucoin_markets_cache = None
