@@ -35,7 +35,7 @@ def get_exchanges():
     return jsonify(ccxt.exchanges)
 
 
-def verify_exchange_credendtials(exchange_name, public_key, private_key):
+def verify_exchange_credentials(exchange_name, public_key, private_key):
     exchange = getattr(ccxt, exchange_name)(
         {"apiKey": public_key, "secret": private_key}
     )
@@ -66,7 +66,7 @@ def add_account():
     public_key = new_account["public_key"]
     private_key = new_account["private_key"]
 
-    if verify_exchange_credendtials(exchange_name, public_key, private_key) is True:
+    if verify_exchange_credentials(exchange_name, public_key, private_key) is True:
         db = get_db_connection()
         db.execute(
             "INSERT INTO accounts (account_name, exchange_name, public_key, private_key) VALUES (?, ?, ? , ?)",
