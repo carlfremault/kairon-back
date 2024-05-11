@@ -4,11 +4,12 @@ from utils.exchanges import *
 
 
 def get_accounts():
-    db = get_db_connection()
-    cursor = db.execute("SELECT id, account_name, exchange_name FROM accounts")
-    accounts = [dict(row) for row in cursor.fetchall()]
-    db.close()
-    return jsonify(accounts)
+    try:
+        accounts = fetch_data("SELECT id, account_name, exchange_name FROM accounts")
+        return jsonify(accounts)
+    except Exception as e:
+        error_message = f"Error fetching accounts: {e}"
+        return jsonify({"error": error_message}), 500
 
 
 def add_account():
@@ -19,14 +20,15 @@ def add_account():
     private_key = new_account["private_key"]
 
     if verify_exchange_credentials(exchange_name, public_key, private_key) is True:
-        db = get_db_connection()
-        db.execute(
-            "INSERT INTO accounts (account_name, exchange_name, public_key, private_key) VALUES (?, ?, ? , ?)",
-            (account_name, exchange_name, public_key, private_key),
-        )
-        db.commit()
-        db.close()
-        response = jsonify("")
-        return response, 204
+        try:
+            execute_query(
+                "INSERT INTO accounts (account_name, exchange_name, public_key, private_key) VALUES (?, ?, ? , ?)",
+                (account_name, exchange_name, public_key, private_key),
+            )
+            return jsonify(""), 204
+        except Exception as e:
+            error_message = f"Error adding account: {e}"
+            return jsonify({"error": error_message}), 500
+
     else:
         return jsonify("Invalid credentials"), 400

@@ -3,4 +3,8 @@ import ccxt
 
 
 def get_exchanges():
-    return jsonify(ccxt.exchanges)
+    try:
+        return jsonify(ccxt.exchanges)
+    except Exception as e:
+        error_message = f"Error fetching exchanges: {e}"
+        return jsonify({"error": error_message}), 500

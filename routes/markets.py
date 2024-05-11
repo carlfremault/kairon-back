@@ -7,21 +7,28 @@ binance_markets_cache = None
 kucoin_markets_cache = None
 
 
+def load_exchange_markets(exchange_name, markets_cache):
+    try:
+        exchange = getattr(ccxt, exchange_name.lower())()
+        markets = exchange.load_markets()
+        markets_cache = markets
+        return markets_cache
+    except Exception as e:
+        error_message = f"Error fetching {exchange_name} markets: {e}"
+        return jsonify({"error": error_message}), 500
+
+
 def get_binance_markets():
     global binance_markets_cache
     if binance_markets_cache is None:
-        binance = ccxt.binance()
-        markets = binance.load_markets()
-        binance_markets_cache = markets
+        binance_markets_cache = load_exchange_markets("binance", binance_markets_cache)
     return binance_markets_cache
 
 
 def get_kucoin_markets():
     global kucoin_markets_cache
     if kucoin_markets_cache is None:
-        kucoin = ccxt.kucoin()
-        markets = kucoin.load_markets()
-        kucoin_markets_cache = markets
+        kucoin_markets_cache = load_exchange_markets("kucoin", kucoin_markets_cache)
     return kucoin_markets_cache
 
 
@@ -48,26 +55,28 @@ def get_all_exchange_markets(id):
 
 
 def get_markets():
-    db = get_db_connection()
-    cursor = db.execute(
-        "SELECT market_name, account_name, exchange_name FROM markets INNER JOIN accounts ON markets.account_id = accounts.id"
-    )
-    markets = [dict(row) for row in cursor.fetchall()]
-    for market in markets:
-        if market["exchange_name"] == "binance":
-            exchange = ccxt.binance()
-        elif market["exchange_name"] == "kucoin":
-            exchange = ccxt.kucoin()
-        ticker = exchange.fetch_ticker(market["market_name"])
-        market_data = {
-            "market_name": market["market_name"],
-            "price": ticker["last"],
-            "account_name": market["account_name"],
-        }
-        market.update(market_data)
+    try:
+        markets = fetch_data(
+            "SELECT market_name, account_name, exchange_name FROM markets INNER JOIN accounts ON markets.account_id = accounts.id"
+        )
 
-    db.close()
-    return jsonify(markets)
+        for market in markets:
+            if market["exchange_name"] == "binance":
+                exchange = ccxt.binance()
+            elif market["exchange_name"] == "kucoin":
+                exchange = ccxt.kucoin()
+            ticker = exchange.fetch_ticker(market["market_name"])
+            market_data = {
+                "market_name": market["market_name"],
+                "price": ticker["last"],
+                "account_name": market["account_name"],
+            }
+            market.update(market_data)
+
+        return jsonify(markets)
+    except Exception as e:
+        error_message = f"Error fetching markets: {e}"
+        return jsonify({"error": error_message}), 500
 
 
 def add_market():
@@ -75,12 +84,12 @@ def add_market():
     account_id = new_market["account_id"]
     market_name = new_market["market_name"]
 
-    db = get_db_connection()
-    db.execute(
-        "INSERT INTO markets (account_id, market_name) VALUES (?, ?)",
-        (account_id, market_name),
-    )
-    db.commit()
-    db.close()
-    response = jsonify("")
-    return response, 204
+    try:
+        execute_query(
+            "INSERT INTO markets (account_id, market_name) VALUES (?, ?)",
+            (account_id, market_name),
+        )
+        return jsonify(""), 204
+    except Exception as e:
+        error_message = f"Error adding market: {e}"
+        return jsonify({"error": error_message}), 500
