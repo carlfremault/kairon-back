@@ -43,7 +43,11 @@ def get_all_exchange_markets(id):
         return jsonify([])
 
     escaped_id = escape(id)
-    account_info = get_account_info(escaped_id)
+    try:
+        account_info = get_account_info(escaped_id)
+    except Exception as e:
+        error_message = f"Error fetching account info: {e}"
+        return jsonify({"error": error_message}), 500
     exchange_name = account_info[0]["exchange_name"]
 
     market_function = exchange_market_functions.get(exchange_name)
